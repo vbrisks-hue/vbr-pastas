@@ -1,0 +1,14 @@
+# Autorização do Google e configuração da máquina: nunca entram no repositório
+# (regra inviolável 2 do programa). Quem clonar cria os seus.
+credentials.json
+token.json
+config.json
+
+# Diário do programa de fundo: traz endereços de autorização e nomes de pastas reais.
+servidor.log
+
+# Lixo do Python e do Finder
+__pycache__/
+*.pyc
+.DS_Store
+.arquivos_ocultos/

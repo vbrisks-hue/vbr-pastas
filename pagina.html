@@ -1,0 +1,1050 @@
+<!doctype html>
+<html lang="pt-BR">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<meta name="color-scheme" content="light">
+<title>VBR Pastas</title>
+<style>
+  /* Tudo aqui é local: nenhuma fonte, folha ou script vem de fora. */
+  :root {
+    --fundo: #f4f2ec;
+    --papel: #ffffff;
+    --tinta: #1e1d1a;
+    --tinta-2: #6d6960;
+    --linha: #e2ded4;
+    --acento: #1f4e8c;
+    --acento-fundo: #eaf0f8;
+    --alerta: #9a6a12;
+    --alerta-fundo: #fbf3df;
+    --erro: #9d2f28;
+    --erro-fundo: #fbebe9;
+    --ok: #2f7a4f;
+    --ok-fundo: #e9f4ec;
+    --mono: ui-monospace, "SF Mono", Menlo, Consolas, monospace;
+    --texto: -apple-system, BlinkMacSystemFont, "Segoe UI", Helvetica, Arial, sans-serif;
+  }
+  * { box-sizing: border-box; }
+  html, body { margin: 0; background: var(--fundo); color: var(--tinta); font: 15px/1.5 var(--texto); }
+  button { font: inherit; }
+  .mono { font-family: var(--mono); font-size: 13.5px; }
+
+  .topo { display: flex; align-items: center; justify-content: space-between; gap: 16px;
+          padding: 14px 28px; border-bottom: 1px solid var(--linha); background: var(--papel); }
+  .marca { font-weight: 600; letter-spacing: .02em; }
+  .marca small { color: var(--tinta-2); font-weight: 400; margin-left: 10px; }
+  .modo { font-size: 13px; color: var(--tinta-2); }
+  .modo .mono { font-size: 12.5px; }
+  .abas { display: flex; gap: 4px; }
+  .abas button { border: 0; background: none; padding: 6px 12px; border-radius: 6px; color: var(--tinta-2); cursor: pointer; }
+  .abas button[aria-current="page"] { background: var(--acento-fundo); color: var(--acento); font-weight: 600; }
+
+  .faixa { padding: 9px 28px; font-size: 13.5px; background: var(--alerta-fundo); color: var(--alerta);
+           border-bottom: 1px solid #efdfb6; }
+
+  main { max-width: 900px; margin: 0 auto; padding: 28px 28px 60px; }
+  .cabeca { display: flex; align-items: center; justify-content: space-between; margin: 0 0 14px; gap: 12px; }
+  h1 { font-size: 13px; letter-spacing: .12em; text-transform: uppercase; color: var(--tinta-2);
+       font-weight: 600; margin: 0; }
+  h2 { font-size: 18px; font-weight: 600; margin: 0; }
+  h3 { font-size: 12.5px; letter-spacing: .1em; text-transform: uppercase; color: var(--tinta-2);
+       margin: 26px 0 10px; font-weight: 600; }
+  .discreto { color: var(--tinta-2); }
+  .nota { color: var(--tinta-2); font-size: 13.5px; margin: 6px 0 0; }
+  .folha-corpo .nota { margin-bottom: 14px; }
+
+  .lista { background: var(--papel); border: 1px solid var(--linha); border-radius: 8px; overflow: hidden; }
+  .linha { display: grid; grid-template-columns: minmax(0, 1.4fr) minmax(0, 1fr) auto; gap: 16px;
+           align-items: center; padding: 12px 16px; border-top: 1px solid var(--linha); }
+  .linha:first-child { border-top: 0; }
+  .linha.parada { background: var(--alerta-fundo); }
+  .linha.ativo { padding-left: 40px; background: #fbfaf7; }
+  .linha .nome { display: flex; align-items: center; gap: 10px; min-width: 0; }
+  .linha .nome .mono { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+  .marca-parada { display: inline-flex; width: 20px; height: 20px; align-items: center; justify-content: center;
+                  border-radius: 50%; background: var(--alerta); color: #fff; font-weight: 700; font-size: 13px;
+                  flex: none; }
+  .idade { color: var(--tinta-2); font-size: 14px; }
+  .acoes { display: flex; gap: 8px; }
+  .vazio { padding: 22px 16px; color: var(--tinta-2); }
+
+  .btn { border: 1px solid var(--linha); background: var(--papel); color: var(--tinta); border-radius: 6px;
+         padding: 6px 12px; cursor: pointer; }
+  .btn:hover { border-color: #c9c4b8; }
+  .btn:disabled { opacity: .5; cursor: default; }
+  .btn.principal { background: var(--acento); border-color: var(--acento); color: #fff; }
+  .btn.confirmar { background: var(--tinta); border-color: var(--tinta); color: #fff; }
+  .btn.pequeno { padding: 3px 9px; font-size: 13px; }
+  .btn.mini { padding: 0 8px; line-height: 24px; font-size: 16px; }
+  .chip { border: 1px solid var(--linha); background: var(--papel); border-radius: 999px; padding: 4px 12px;
+          cursor: pointer; font-family: var(--mono); font-size: 13px; }
+  .chip[aria-pressed="true"] { background: var(--acento); border-color: var(--acento); color: #fff; }
+  .chips { display: flex; flex-wrap: wrap; gap: 8px; margin: 0 0 14px; }
+
+  /* A folha: um painel sobre a lista, uma coisa de cada vez. */
+  .veu { position: fixed; inset: 0; background: rgba(30, 29, 26, .35); display: flex;
+         align-items: flex-start; justify-content: center; padding: 48px 16px; overflow: auto; z-index: 5; }
+  .veu[hidden] { display: none; }
+  .folha { background: var(--papel); border-radius: 10px; width: 100%; max-width: 680px;
+           box-shadow: 0 20px 50px rgba(0,0,0,.18); }
+  .folha-cabeca { display: flex; align-items: center; justify-content: space-between;
+                  padding: 18px 24px; border-bottom: 1px solid var(--linha); }
+  .fechar { border: 0; background: none; font-size: 22px; line-height: 1; color: var(--tinta-2); cursor: pointer; }
+  .folha-corpo { padding: 20px 24px 24px; }
+
+  .campo { margin: 0 0 16px; }
+  .campo label { display: block; font-size: 13px; color: var(--tinta-2); margin-bottom: 4px; }
+  .campo input, .campo select, .campo textarea { width: 100%; font: inherit; padding: 8px 10px;
+        border: 1px solid var(--linha); border-radius: 6px; background: #fff; color: var(--tinta); }
+  .campo input:focus, .campo select:focus, .campo textarea:focus { outline: 2px solid var(--acento-fundo);
+        border-color: var(--acento); }
+  .campo .dica { font-size: 13px; color: var(--tinta-2); margin-top: 4px; }
+  .campo.marcar { display: flex; align-items: flex-start; gap: 10px; }
+  .campo.marcar input { width: auto; margin-top: 4px; }
+  .campo.marcar label { color: var(--tinta); font-size: 15px; margin: 0; }
+  .previa { font-family: var(--mono); font-size: 13.5px; background: var(--fundo); padding: 8px 12px;
+            border-radius: 6px; margin: -6px 0 16px; color: var(--tinta); min-height: 36px; }
+  .previa.vazia { color: var(--tinta-2); }
+  .previa.erro { color: var(--erro); background: var(--erro-fundo); }
+
+  /* Os cartões de tipo de frente: cada um mostra as subpastas que vai criar. */
+  .cartoes { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; margin: 0 0 16px; }
+  .cartao { display: block; border: 1px solid var(--linha); border-radius: 8px; padding: 12px 14px; cursor: pointer; }
+  .cartao:hover { border-color: #c9c4b8; }
+  .cartao input { position: absolute; opacity: 0; pointer-events: none; }
+  .cartao.escolhido { border-color: var(--acento); background: var(--acento-fundo); }
+  .cartao .codigo { font-family: var(--mono); font-weight: 700; font-size: 13.5px; }
+  .cartao .desc { font-size: 13.5px; margin: 2px 0 4px; }
+  .cartao .quando { font-size: 12.5px; color: var(--tinta-2); margin: 0 0 8px; }
+  .cartao ul { margin: 0; padding: 0; list-style: none; font-family: var(--mono); font-size: 12px; line-height: 1.5;
+               color: var(--tinta-2); }
+  .cartao.escolhido ul { color: var(--tinta); }
+
+  .grade { display: grid; gap: 8px; }
+  .grade-ativos > div { display: flex; gap: 8px; }
+  .grade-ativos input { flex: 1; }
+  .frente { border: 1px solid var(--linha); border-radius: 8px; padding: 12px 12px 4px; margin-bottom: 8px; }
+  .frente .campos { display: grid; grid-template-columns: 1fr 1fr; gap: 0 12px; }
+  .frente .campos .largo { grid-column: 1 / -1; }
+  .frente .topo-frente { display: flex; justify-content: space-between; align-items: center; margin-bottom: 8px; }
+  .frente .topo-frente span { font-size: 13px; color: var(--tinta-2); }
+
+  .rodape { display: flex; justify-content: flex-end; gap: 10px; margin-top: 22px; }
+
+  .plano-parte { margin: 0 0 16px; }
+  .plano-parte .rotulo { font-size: 12px; letter-spacing: .1em; text-transform: uppercase;
+                         color: var(--tinta-2); font-weight: 600; margin-bottom: 6px; }
+  pre.arvore { margin: 0; white-space: pre-wrap; overflow-wrap: anywhere; font: 13px/1.55 var(--mono);
+               background: var(--fundo); padding: 12px 14px; border-radius: 6px; }
+  .destino { font-family: var(--mono); font-size: 13px; color: var(--tinta-2); margin: 0 0 14px; }
+  .aviso { background: var(--alerta-fundo); color: var(--alerta); padding: 10px 12px; border-radius: 6px;
+           font-size: 14px; margin: 0 0 12px; }
+  .caixa-erro { background: var(--erro-fundo); color: var(--erro); padding: 10px 12px; border-radius: 6px;
+                font-size: 14px; margin: 0 0 12px; }
+  .caixa-ok { background: var(--ok-fundo); color: var(--ok); padding: 12px 14px; border-radius: 6px; margin: 0 0 12px; }
+  .resumo { font-weight: 600; margin: 4px 0 0; }
+
+  .passos { font: 13px/1.6 var(--mono); margin: 0 0 14px; padding: 0; list-style: none; }
+  .passos li { display: flex; gap: 10px; }
+  .passos .m { width: 14px; text-align: center; color: var(--tinta-2); }
+  .passos .m.mais { color: var(--ok); font-weight: 700; }
+  .passos .m.move { color: var(--acento); font-weight: 700; }
+  .passos .m.falha { color: var(--erro); font-weight: 700; }
+  .legenda { font-size: 12.5px; color: var(--tinta-2); margin: 0 0 16px; }
+
+  /* A auditoria: achados agrupados por família, dentro de cada gravidade. */
+  .ficha { background: var(--papel); border: 1px solid var(--linha); border-radius: 8px; padding: 6px 16px; margin: 0 0 8px; }
+  .ficha div { display: grid; grid-template-columns: 150px 1fr; gap: 12px; padding: 7px 0; border-top: 1px solid var(--linha); }
+  .ficha div:first-child { border-top: 0; }
+  .ficha dt { color: var(--tinta-2); font-size: 13.5px; }
+  .ficha dd { margin: 0; overflow-wrap: anywhere; }
+  .estado-ok { color: var(--ok); font-weight: 600; }
+  .estado-alerta { color: var(--alerta); font-weight: 600; }
+  .auditoria-barra { display: flex; gap: 10px; align-items: end; margin: 0 0 20px; }
+  .auditoria-barra .campo { flex: 1; margin: 0; }
+  .resultado-auditoria h2 { margin-top: 26px; }
+  .gravidade { margin: 0 0 22px; }
+  .gravidade h3 { margin-top: 0; }
+  .gravidade.erro h3 { color: var(--erro); }
+  .gravidade.aviso h3 { color: var(--alerta); }
+  .familia { background: var(--papel); border: 1px solid var(--linha); border-radius: 8px; margin: 0 0 10px; }
+  .familia summary { padding: 10px 16px; cursor: pointer; font-weight: 600; display: flex; justify-content: space-between; }
+  .familia summary .qtd { color: var(--tinta-2); font-weight: 400; }
+  .achado { padding: 10px 16px; border-top: 1px solid var(--linha); }
+  .achado .caminho { font-family: var(--mono); font-size: 12.5px; color: var(--tinta-2); }
+  .achado .sugestao { font-size: 13.5px; color: var(--tinta-2); }
+  .achado .sugestao::before { content: "→ "; }
+
+  @media (max-width: 640px) {
+    .topo, main, .faixa { padding-left: 16px; padding-right: 16px; }
+    .topo { flex-wrap: wrap; }
+    .linha { grid-template-columns: 1fr; gap: 6px; }
+    .frente .campos, .cartoes { grid-template-columns: 1fr; }
+  }
+</style>
+</head>
+<body>
+
+<header class="topo">
+  <div class="marca">VBR Pastas <small>pastas de clientes no Drive</small></div>
+  <nav class="abas" id="abas">
+    <button type="button" data-vista="funil">Funil</button>
+    <button type="button" data-vista="clientes">Clientes</button>
+    <button type="button" data-vista="auditoria">Auditoria</button>
+    <button type="button" data-vista="sistema">Sistema</button>
+  </nav>
+  <div class="modo" id="modo"></div>
+</header>
+<div id="faixa" hidden></div>
+
+<main>
+  <section id="vista"><p class="discreto">Lendo o Drive…</p></section>
+</main>
+
+<div class="veu" id="veu" hidden>
+  <div class="folha" id="folha" role="dialog" aria-modal="true"></div>
+</div>
+
+<script>
+'use strict';
+
+// ---------------------------------------------------------------------------
+// Utilidades
+// ---------------------------------------------------------------------------
+const $ = (s, r = document) => r.querySelector(s);
+
+function el(tag, attrs, ...filhos) {
+  const n = document.createElement(tag);
+  for (const [k, v] of Object.entries(attrs || {})) {
+    if (v === null || v === undefined || v === false) continue;
+    if (k === 'class') n.className = v;
+    else if (k.startsWith('on')) n.addEventListener(k.slice(2), v);
+    else if (k === 'value') n.value = v;
+    else n.setAttribute(k, v === true ? '' : v);
+  }
+  for (const f of filhos.flat()) {
+    if (f === null || f === undefined || f === false) continue;
+    n.append(f.nodeType ? f : document.createTextNode(String(f)));
+  }
+  return n;
+}
+
+// Toda conversa com o servidor passa aqui. Um erro vira uma frase, nunca
+// um traceback — o traceback fica na janela do terminal.
+async function api(caminho, dados) {
+  const opcoes = dados === undefined ? {} : {
+    method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(dados),
+  };
+  let resposta;
+  try {
+    resposta = await fetch(caminho, opcoes);
+  } catch (e) {
+    throw new Error('Não consegui falar com o programa. A janela do terminal ainda está aberta?');
+  }
+  let corpo;
+  try {
+    corpo = await resposta.json();
+  } catch (e) {
+    throw new Error('O programa respondeu algo que a página não entendeu. Veja a janela do terminal.');
+  }
+  if (!resposta.ok || corpo.erro) throw new Error(corpo.erro || ('Erro ' + resposta.status));
+  return corpo;
+}
+
+function adiar(funcao, ms) {
+  let t;
+  return (...a) => { clearTimeout(t); t = setTimeout(() => funcao(...a), ms); };
+}
+
+function dataBonita(iso) {
+  if (!iso) return '(sem data)';
+  const [a, m, d] = iso.split('-');
+  return d ? `${d}/${m}/${a}` : iso;
+}
+
+function plural(n, um, varios) { return `${n} ${n === 1 ? um : varios}`; }
+
+function caixaErro(mensagem, tentarDeNovo) {
+  return el('div', {},
+    el('div', { class: 'caixa-erro', role: 'alert' }, mensagem),
+    tentarDeNovo ? el('button', { type: 'button', class: 'btn', onclick: tentarDeNovo }, 'Tentar de novo') : null);
+}
+
+let ESTADO = null;
+let MODELO = null;
+let DESTINOS = null;   // clientes e ativos, lidos do Drive quando a aba Clientes abre
+let VISTA = 'funil';
+
+// ---------------------------------------------------------------------------
+// As abas
+// ---------------------------------------------------------------------------
+function mostrarVista(nome, extra) {
+  VISTA = nome;
+  for (const b of $('#abas').querySelectorAll('button')) {
+    if (b.dataset.vista === nome) b.setAttribute('aria-current', 'page');
+    else b.removeAttribute('aria-current');
+  }
+  if (nome === 'funil') carregarFunil();
+  else if (nome === 'clientes') carregarClientes();
+  else if (nome === 'auditoria') telaAuditoria(extra);
+  else if (nome === 'sistema') telaSistema();
+}
+$('#abas').addEventListener('click', (e) => {
+  const b = e.target.closest('button[data-vista]');
+  if (b) mostrarVista(b.dataset.vista);
+});
+
+// ---------------------------------------------------------------------------
+// O funil — a tela inicial
+// ---------------------------------------------------------------------------
+async function carregarFunil() {
+  const area = $('#vista');
+  area.replaceChildren(el('p', { class: 'discreto' }, 'Lendo o Drive…'));
+  try {
+    desenharFunil(await api('/api/funil'));
+  } catch (e) {
+    area.replaceChildren(el('div', { class: 'cabeca' }, el('h1', {}, 'Funil')), caixaErro(e.message, carregarFunil));
+  }
+}
+
+function desenharFunil(f) {
+  const partes = [];
+  partes.push(el('div', { class: 'cabeca' },
+    el('h1', {}, 'Funil'),
+    el('button', { type: 'button', class: 'btn principal', onclick: abrirOriginar }, '+ Nova originação'),
+  ));
+  if (!f.existe) {
+    partes.push(el('div', { class: 'aviso' },
+      `A pasta do funil ainda não existe no Drive (${f.caminho}). Ela é criada junto com a primeira originação.`));
+  }
+
+  const abertas = el('div', { class: 'lista' });
+  if (!f.abertas.length) abertas.append(el('div', { class: 'vazio' }, 'Nenhuma originação aberta.'));
+  for (const o of f.abertas) {
+    const idade = o.meses === null ? 'sem competência no nome'
+      : o.meses === 0 ? 'aberta este mês'
+      : `aberta há ${plural(o.meses, 'mês', 'meses')}`;
+    abertas.append(el('div', { class: 'linha' + (o.parada ? ' parada' : '') },
+      el('div', { class: 'nome' },
+        o.parada ? el('span', { class: 'marca-parada', title: `passou de ${f.paciencia} meses` }, '!') : null,
+        el('span', { class: 'mono' }, o.nome)),
+      el('div', { class: 'idade' }, idade),
+      el('div', { class: 'acoes' },
+        el('button', { type: 'button', class: 'btn pequeno', onclick: () => abrirPromover(o) }, 'Promover'),
+        el('button', { type: 'button', class: 'btn pequeno', onclick: () => abrirEncerrar(o) }, 'Encerrar')),
+    ));
+  }
+  partes.push(abertas);
+  if (f.abertas.some(o => o.parada)) {
+    partes.push(el('p', { class: 'nota' },
+      `! passou de ${f.paciencia} meses. Fechar ou encerrar — o funil só serve enquanto é verdade. `,
+      'Originação parada não é erro: é uma decisão que ninguém tomou.'));
+  }
+
+  if (f.encerradas.length) {
+    partes.push(el('h3', {}, 'Encerradas'));
+    const enc = el('div', { class: 'lista' });
+    for (const e of f.encerradas) {
+      enc.append(el('div', { class: 'linha' },
+        el('div', { class: 'nome' }, el('span', { class: 'mono' }, e.nome)),
+        el('div', { class: 'idade' }, `${dataBonita(e.quando)} — ${e.motivo || '(sem motivo registrado)'}`),
+        el('div', { class: 'acoes' },
+          el('button', { type: 'button', class: 'btn pequeno', onclick: () => abrirReabrir(e) }, 'Reabrir')),
+      ));
+    }
+    partes.push(enc);
+    partes.push(el('p', { class: 'nota' }, 'Encerrada não é apagada: fica com data e motivo, para o dia em que o nome voltar.'));
+  }
+  $('#vista').replaceChildren(...partes);
+}
+
+// ---------------------------------------------------------------------------
+// Clientes — cada cliente e cada ativo, lidos do Drive. É daqui que se abre
+// frente e ramo: o destino é escolhido, nunca digitado.
+// ---------------------------------------------------------------------------
+async function carregarDestinos() {
+  DESTINOS = (await api('/api/destinos')).destinos;
+  return DESTINOS;
+}
+
+async function carregarClientes() {
+  const area = $('#vista');
+  area.replaceChildren(el('p', { class: 'discreto' }, 'Lendo o Drive…'));
+  try {
+    await carregarDestinos();
+    desenharClientes();
+  } catch (e) {
+    area.replaceChildren(el('div', { class: 'cabeca' }, el('h1', {}, 'Clientes')), caixaErro(e.message, carregarClientes));
+  }
+}
+
+function desenharClientes() {
+  const lista = el('div', { class: 'lista' });
+  if (!DESTINOS.length) lista.append(el('div', { class: 'vazio' }, 'Nenhum cliente em ' + ESTADO.raiz + '.'));
+  for (const d of DESTINOS) {
+    const acoes = [
+      el('button', { type: 'button', class: 'btn pequeno', onclick: () => abrirFrente(d) }, 'Frente'),
+      el('button', { type: 'button', class: 'btn pequeno', onclick: () => abrirRamo(d) }, 'Ramo'),
+    ];
+    if (d.nivel === 'grupo') {
+      acoes.unshift(el('button', { type: 'button', class: 'btn pequeno', onclick: () => abrirAtivo(d) }, '+ Ativo'));
+      acoes.push(el('button', { type: 'button', class: 'btn pequeno', onclick: () => mostrarVista('auditoria', d.caminho) }, 'Auditar'));
+    }
+    lista.append(el('div', { class: 'linha' + (d.nivel === 'ativo' ? ' ativo' : '') },
+      el('div', { class: 'nome' }, el('span', { class: 'mono' }, d.nivel === 'ativo' ? d.nome : d.caminho)),
+      el('div', { class: 'idade' }, d.nivel === 'ativo' ? 'ativo' : 'cliente'),
+      el('div', { class: 'acoes' }, ...acoes)));
+  }
+  $('#vista').replaceChildren(
+    el('div', { class: 'cabeca' },
+      el('h1', {}, 'Clientes'),
+      el('button', { type: 'button', class: 'btn principal', onclick: abrirCliente }, '+ Novo cliente')),
+    lista,
+    el('p', { class: 'nota' }, 'A frente mora no nível do seu escopo: frente de um ativo fica sob o ativo; a que atravessa ativos fica no cliente. Ramo se abre quando há apólice, não por precaução.'),
+  );
+}
+
+// ---------------------------------------------------------------------------
+// Auditoria — só lê. Os achados vêm agrupados por família.
+// ---------------------------------------------------------------------------
+async function telaAuditoria(alvoInicial) {
+  const area = $('#vista');
+  area.replaceChildren(el('p', { class: 'discreto' }, 'Lendo o Drive…'));
+  try {
+    if (!DESTINOS) await carregarDestinos();
+  } catch (e) {
+    area.replaceChildren(el('div', { class: 'cabeca' }, el('h1', {}, 'Auditoria')), caixaErro(e.message, () => telaAuditoria(alvoInicial)));
+    return;
+  }
+  const alvo = el('select', {},
+    el('option', { value: MODELO.funil }, 'o funil'),
+    ...DESTINOS.filter(d => d.nivel === 'grupo').map(d => el('option', { value: d.caminho }, d.caminho)));
+  if (alvoInicial) alvo.value = alvoInicial;
+  const resultado = el('div', { class: 'resultado-auditoria' });
+  const conferir = el('button', { type: 'button', class: 'btn principal', onclick: async () => {
+    conferir.disabled = true;
+    resultado.replaceChildren(el('p', { class: 'discreto' }, 'Lendo a árvore inteira no Drive… num cliente grande leva alguns segundos.'));
+    try {
+      desenharAuditoria(resultado, await api('/api/auditoria?' + new URLSearchParams({ alvo: alvo.value })));
+    } catch (e) {
+      resultado.replaceChildren(caixaErro(e.message));
+    } finally {
+      conferir.disabled = false;
+    }
+  } }, 'Conferir');
+  area.replaceChildren(
+    el('div', { class: 'cabeca' }, el('h1', {}, 'Auditoria')),
+    el('div', { class: 'auditoria-barra' }, el('div', { class: 'campo' }, el('label', {}, 'O que conferir'), alvo), conferir),
+    el('p', { class: 'nota' }, 'A auditoria só lê. Cada regra existe porque alguma coisa deu errado daquele jeito na migração de setembro.'),
+    resultado,
+  );
+  if (alvoInicial) conferir.click();
+}
+
+function desenharAuditoria(area, r) {
+  const partes = [el('h2', {}, r.titulo), el('p', { class: 'nota' }, r.resumo)];
+  if (r.limpo) partes.push(el('div', { class: 'caixa-ok' }, 'Nenhum erro nem aviso. A árvore está no modelo.'));
+  for (const g of r.gravidades) {
+    if (!g.total) continue;
+    const bloco = el('div', { class: 'gravidade ' + g.gravidade.toLowerCase() }, el('h3', {}, `${g.titulo} (${g.total})`));
+    for (const f of g.familias) {
+      const det = el('details', { class: 'familia', open: g.gravidade !== 'NOTA' },
+        el('summary', {}, el('span', {}, f.nome), el('span', { class: 'qtd' }, plural(f.itens.length, 'achado', 'achados'))),
+        ...f.itens.map(i => el('div', { class: 'achado' },
+          el('div', { class: 'caminho' }, i.caminho),
+          el('div', {}, i.mensagem),
+          i.sugestao ? el('div', { class: 'sugestao' }, i.sugestao) : null,
+          i.alinhar ? el('p', { class: 'acoes' },
+            el('button', { type: 'button', class: 'btn pequeno', onclick: () => abrirAlinhar(i.alinhar, () => telaAuditoria(r.alvo === 'o funil' ? MODELO.funil : r.alvo)) }, 'Alinhar')) : null)));
+      bloco.append(det);
+    }
+    partes.push(bloco);
+  }
+  area.replaceChildren(...partes);
+}
+
+// ---------------------------------------------------------------------------
+// Sistema — o programa, e o agente que o sobe com o Mac
+// ---------------------------------------------------------------------------
+async function telaSistema() {
+  const area = $('#vista');
+  area.replaceChildren(el('p', { class: 'discreto' }, 'Consultando…'));
+  let s;
+  try {
+    s = await api('/api/sistema');
+  } catch (e) {
+    area.replaceChildren(el('div', { class: 'cabeca' }, el('h1', {}, 'Sistema')), caixaErro(e.message, telaSistema));
+    return;
+  }
+  const linha = (rotulo, valor) => el('div', {}, el('dt', {}, rotulo), el('dd', {}, valor));
+  const programa = el('dl', { class: 'ficha' },
+    linha('Drive', s.modo === 'falso' ? 'de demonstração — nada aqui é de verdade' : 'da VB Risk'),
+    linha('Clientes', el('span', { class: 'mono' }, s.raiz)),
+    linha('Funil', el('span', { class: 'mono' }, s.funil)),
+    linha('Endereço', el('span', { class: 'mono' }, s.agente ? s.agente.endereco : '')),
+    linha('Pasta do programa', el('span', { class: 'mono' }, s.pasta)),
+    linha('Python', el('span', { class: 'mono' }, s.python)),
+    linha('Este servidor', s.fundo ? 'é o programa de fundo, do launchd' : 'foi aberto pelo atalho, numa janela do Terminal'),
+  );
+
+  const a = s.agente;
+  let situacao, acoes;
+  if (!a) {
+    situacao = el('p', {}, 'Este servidor subiu sem o lançador. Instale pelo Terminal: ', el('span', { class: 'mono' }, 'python3 servidor.py --instalar'));
+    acoes = [];
+  } else if (!a.instalado) {
+    situacao = el('p', {}, el('span', { class: 'estado-alerta' }, 'Não instalado.'), ' Hoje o programa só abre pelo atalho, numa janela do Terminal.');
+    acoes = [el('button', { type: 'button', class: 'btn principal', onclick: () => abrirInstalar('Subir com o Mac') }, 'Subir com o Mac')];
+  } else {
+    situacao = el('p', {},
+      a.rodando ? el('span', { class: 'estado-ok' }, `Instalado e rodando (processo ${a.pid}).`)
+        : el('span', { class: 'estado-alerta' }, 'Instalado, mas não está rodando.'),
+      a.rodando ? ' Sobe sozinho ao entrar na conta e volta se cair.' : ' Veja o log.');
+    acoes = [
+      el('button', { type: 'button', class: 'btn', onclick: () => abrirInstalar('Regravar o agente') }, 'Regravar'),
+      el('button', { type: 'button', class: 'btn', onclick: abrirDesinstalar }, 'Deixar de subir com o Mac'),
+    ];
+  }
+  const agente = a ? el('dl', { class: 'ficha' },
+    linha('Agente', el('span', { class: 'mono' }, a.plist)),
+    linha('Log', el('span', { class: 'mono' }, a.log)),
+    linha('Atalho', a.atalho_web_existe ? el('span', { class: 'mono' }, a.atalho_web) : 'ainda não existe; nasce com a instalação'),
+  ) : null;
+
+  area.replaceChildren(
+    el('div', { class: 'cabeca' }, el('h1', {}, 'Sistema')),
+    programa,
+    el('h3', {}, 'Subir com o Mac'),
+    situacao,
+    el('p', { class: 'acoes' }, ...acoes),
+    agente,
+    el('p', { class: 'nota' }, 'Instalado, o programa sobe sem janela nenhuma ao entrar na conta; a tela abre pelo atalho “Abrir VBR Pastas.webloc” ou pelo endereço no navegador. Depois de atualizar os arquivos do programa, Regravar faz o programa de fundo recarregar.'),
+  );
+}
+
+function abrirInstalar(titulo) {
+  const corpo = abrirFolha(titulo);
+  corpo.replaceChildren(el('p', { class: 'discreto' }, 'Preparando…'));
+  pedirPlano(corpo, '/api/instalar/plano', {}, telaSistema);
+}
+
+function abrirDesinstalar() {
+  const corpo = abrirFolha('Deixar de subir com o Mac');
+  corpo.replaceChildren(el('p', { class: 'discreto' }, 'Preparando…'));
+  pedirPlano(corpo, '/api/desinstalar/plano', {}, telaSistema);
+}
+
+// ---------------------------------------------------------------------------
+// A folha: um painel por vez. Etapa "form" (Enter pede o plano), etapa
+// "plano" (Enter não faz nada: confirmar é clique), etapa "resultado".
+// ---------------------------------------------------------------------------
+let ocupado = false;
+
+function abrirFolha(titulo) {
+  const folha = $('#folha');
+  folha.replaceChildren(
+    el('div', { class: 'folha-cabeca' },
+      el('h2', {}, titulo),
+      el('button', { type: 'button', class: 'fechar', 'aria-label': 'Fechar', onclick: fecharFolha }, '×')),
+    el('div', { class: 'folha-corpo', id: 'corpo' }),
+  );
+  folha.dataset.etapa = 'form';
+  $('#veu').hidden = false;
+  $('#veu').scrollTop = 0;
+  return $('#corpo');
+}
+
+function fecharFolha() {
+  if (ocupado) return;
+  $('#veu').hidden = true;
+  $('#folha').replaceChildren();
+}
+
+document.addEventListener('keydown', (e) => {
+  if ($('#veu').hidden) return;
+  const etapa = $('#folha').dataset.etapa;
+  if (e.key === 'Escape') { fecharFolha(); return; }
+  if (e.key !== 'Enter') return;
+  // Um Enter distraído nunca escreve no Drive.
+  if (etapa === 'plano') { e.preventDefault(); return; }
+  // No formulário, Enter pede o plano — que não escreve nada. No resultado,
+  // Enter fecha. Nos dois casos é o botão azul, que nunca é o que escreve.
+  if ((etapa === 'form' && e.target.tagName === 'INPUT' && e.target.type !== 'checkbox') || etapa === 'resultado') {
+    e.preventDefault();
+    const principal = $('#folha .btn.principal');
+    if (principal && !principal.disabled) principal.click();
+  }
+});
+
+function mostrarErro(corpo, mensagem) {
+  const antigo = corpo.querySelector('.caixa-erro');
+  if (antigo) antigo.remove();
+  corpo.prepend(el('div', { class: 'caixa-erro', role: 'alert' }, mensagem));
+  $('#veu').scrollTop = 0;
+}
+
+function travar(sim) {
+  ocupado = sim;
+  for (const b of document.querySelectorAll('#folha button')) b.disabled = sim;
+}
+
+// Pede o plano ao servidor e o mostra. Só a partir dele se confirma.
+async function pedirPlano(corpo, rota, dados, aoTerminar) {
+  travar(true);
+  try {
+    const r = await api(rota, dados);
+    mostrarPlano(corpo, r, aoTerminar);
+  } catch (e) {
+    mostrarErro(corpo, e.message);
+  } finally {
+    travar(false);
+  }
+}
+
+function mostrarPlano(corpo, r, aoTerminar) {
+  const { plano, senha } = r;
+  $('#folha').dataset.etapa = 'plano';
+  $('#folha h2').textContent = plano.titulo;
+
+  const partes = [el('p', { class: 'destino' }, 'em ', plano.destino)];
+  for (const a of plano.avisos || []) partes.push(el('div', { class: 'aviso' }, a));
+  for (const p of plano.partes) {
+    partes.push(el('div', { class: 'plano-parte' },
+      el('div', { class: 'rotulo' }, p.rotulo),
+      el('pre', { class: 'arvore' }, p.linhas.join('\n')),
+      p.total !== undefined ? el('p', { class: 'nota' }, plural(p.total, 'pasta', 'pastas')) : null));
+  }
+  partes.push(el('p', { class: 'resumo' }, plano.resumo));
+  partes.push(el('p', { class: 'nota' }, 'Nada foi gravado ainda. Só muda depois de Confirmar.'));
+
+  const cancelar = el('button', { type: 'button', class: 'btn', onclick: fecharFolha }, 'Cancelar');
+  const confirmar = el('button', { type: 'button', class: 'btn confirmar', onclick: async () => {
+    travar(true);
+    try {
+      mostrarResultado(corpo, await api('/api/executar', { senha }), aoTerminar);
+    } catch (e) {
+      travar(false);
+      mostrarErro(corpo, e.message);
+    }
+  } }, 'Confirmar');
+  partes.push(el('div', { class: 'rodape' }, cancelar, confirmar));
+
+  corpo.replaceChildren(...partes);
+  $('#veu').scrollTop = 0;
+  cancelar.focus();  // o foco fica no "não"; confirmar é um clique deliberado
+}
+
+function mostrarResultado(corpo, r, aoTerminar) {
+  travar(false);
+  $('#folha').dataset.etapa = 'resultado';
+  const classe = { '+': 'mais', '>': 'move', '~': 'move', '!': 'falha', '-': 'falha', '=': '' };
+  const lista = el('ul', { class: 'passos' },
+    ...r.passos.map(p => el('li', {},
+      el('span', { class: 'm ' + (classe[p.marca] || '') }, p.marca),
+      el('span', {}, ' '.repeat(p.nivel * 3) + p.texto))));
+  corpo.replaceChildren(
+    lista,
+    el('p', { class: 'legenda' }, '+ criada agora · = já existia · > mudou de lugar · ~ renomeada · - apagada'),
+    el('p', { class: 'resumo' }, r.resumo),
+    r.mensagem ? el('p', { class: 'nota' }, r.mensagem) : null,
+    el('div', { class: 'rodape' },
+      el('button', { type: 'button', class: 'btn principal', onclick: () => { fecharFolha(); (aoTerminar || carregarFunil)(); } }, 'Fechar')),
+  );
+  $('#veu').scrollTop = 0;
+  $('#folha .btn.principal').focus();
+}
+
+function campo(rotulo, entrada, dica) {
+  return el('div', { class: 'campo' }, el('label', {}, rotulo), entrada, dica ? el('div', { class: 'dica' }, dica) : null);
+}
+
+// A grafia da casa vem do servidor, que pergunta ao modelo. A página não
+// sabe normalizar nome nenhum, de propósito.
+function previaDeGrafia(inputNome, inputCompetencia, previa, prefixo) {
+  const atualizar = adiar(async () => {
+    const nome = inputNome.value.trim();
+    if (!nome) { previa.className = 'previa vazia'; previa.textContent = prefixo + '…'; return; }
+    try {
+      const params = new URLSearchParams({ nome });
+      if (inputCompetencia) params.set('competencia', inputCompetencia.value.trim());
+      const g = await api('/api/grafia?' + params);
+      if (g.erro) { previa.className = 'previa erro'; previa.textContent = g.erro; return; }
+      const texto = inputCompetencia ? g.pasta : g.grafia;
+      if (!texto || !g.grafia) {
+        previa.className = 'previa erro';
+        previa.textContent = 'Esse nome não deixa nada aproveitável na grafia da casa.';
+        return;
+      }
+      previa.className = 'previa';
+      previa.textContent = prefixo + texto;
+    } catch (e) {
+      previa.className = 'previa erro'; previa.textContent = e.message;
+    }
+  }, 150);
+  // 'input' basta num teclado de verdade; 'change' cobre autopreenchimento e
+  // colagem por menu, que alguns navegadores não anunciam como 'input'.
+  for (const evento of ['input', 'change', 'keyup']) {
+    inputNome.addEventListener(evento, atualizar);
+    if (inputCompetencia) inputCompetencia.addEventListener(evento, atualizar);
+  }
+  atualizar();
+}
+
+// O seletor de destino: cada cliente e cada ativo, como a aba Clientes lista.
+function seletorDeDestino(atual) {
+  const sel = el('select', {},
+    ...DESTINOS.map(d => el('option', { value: d.caminho },
+      d.nivel === 'ativo' ? `${d.cliente} / ${d.nome}` : d.caminho)));
+  if (atual) sel.value = atual;
+  return sel;
+}
+
+// Os cartões de tipo de frente. Cada um mostra as subpastas que vai criar,
+// para ninguém escolher por número nem de memória.
+function cartoesDeTipo(nome) {
+  const grade = el('div', { class: 'cartoes' });
+  for (const t of MODELO.tipos_frente) {
+    const radio = el('input', { type: 'radio', name: nome, value: t.codigo });
+    const cartao = el('label', { class: 'cartao' },
+      radio,
+      el('div', { class: 'codigo' }, t.codigo),
+      el('div', { class: 'desc' }, t.descricao),
+      el('div', { class: 'quando' }, 'usar quando: ' + t.quando),
+      el('ul', {}, ...t.subpastas.map(s => el('li', {}, s))));
+    radio.addEventListener('change', () => {
+      for (const c of grade.querySelectorAll('.cartao')) c.classList.remove('escolhido');
+      cartao.classList.add('escolhido');
+    });
+    grade.append(cartao);
+  }
+  grade.escolhido = () => (grade.querySelector('input:checked') || {}).value || '';
+  return grade;
+}
+
+// Ativos e frentes, como a promoção e o cliente novo pedem. Devolve o bloco
+// e duas funções que leem o que foi preenchido.
+function secaoDeAtivosEFrentes() {
+  const ativos = el('div', { class: 'grade grade-ativos' });
+  const nomesDosAtivos = () => [...ativos.querySelectorAll('input')].map(i => i.value.trim()).filter(Boolean);
+  function linhaDeAtivo(valor) {
+    const entrada = el('input', { type: 'text', autocomplete: 'off', placeholder: 'ex.: Usina Norte', value: valor || '' });
+    const linha = el('div', {}, entrada,
+      el('button', { type: 'button', class: 'btn mini', title: 'Tirar', onclick: () => { linha.remove(); atualizarOndes(); } }, '×'));
+    for (const evento of ['input', 'change', 'keyup']) entrada.addEventListener(evento, atualizarOndes);
+    ativos.append(linha);
+    return entrada;
+  }
+
+  const frentes = el('div', {});
+  // As opções de "onde mora" seguem a lista de ativos como ela está agora:
+  // são refeitas quando um ativo muda e, por garantia, quando o seletor
+  // ganha foco.
+  function preencherOnde(sel) {
+    const atual = sel.value;
+    sel.replaceChildren(el('option', { value: '' }, 'no grupo — atravessa ativos'),
+      ...nomesDosAtivos().map(a => el('option', { value: a }, 'no ativo ' + a)));
+    sel.value = [...sel.options].some(o => o.value === atual) ? atual : '';
+  }
+  function atualizarOndes() {
+    for (const sel of frentes.querySelectorAll('select.onde')) preencherOnde(sel);
+  }
+  function blocoDeFrente() {
+    const onde = el('select', { class: 'onde', onfocus: () => preencherOnde(onde) });
+    preencherOnde(onde);
+    const titulo = el('input', { type: 'text', autocomplete: 'off', placeholder: 'ex.: Renovação RO', class: 'titulo' });
+    const competencia = el('input', { type: 'text', autocomplete: 'off', value: ESTADO.competencia_hoje, maxlength: 7, class: 'competencia' });
+    const tipo = el('select', { class: 'tipo' },
+      ...MODELO.tipos_frente.map(t => el('option', { value: t.codigo, title: t.quando },
+        `${t.codigo} — ${t.descricao} (${t.subpastas.length} subpastas)`)));
+    const previa = el('div', { class: 'previa vazia' });
+    const bloco = el('div', { class: 'frente' },
+      el('div', { class: 'topo-frente' }, el('span', {}, 'Frente'),
+        el('button', { type: 'button', class: 'btn mini', title: 'Tirar', onclick: () => bloco.remove() }, '×')),
+      el('div', { class: 'campos' },
+        el('div', { class: 'campo largo' }, el('label', {}, 'Onde mora'), onde),
+        el('div', { class: 'campo largo' }, el('label', {}, 'Título'), titulo),
+        el('div', { class: 'campo' }, el('label', {}, 'Competência (AAAA-MM)'), competencia),
+        el('div', { class: 'campo' }, el('label', {}, 'Tipo'), tipo)),
+      previa);
+    previaDeGrafia(titulo, competencia, previa, 'Pasta  ');
+    frentes.append(bloco);
+    titulo.focus();
+  }
+  const frentesInformadas = () => [...frentes.querySelectorAll('.frente')].map(b => ({
+    onde: b.querySelector('select.onde').value,
+    titulo: b.querySelector('input.titulo').value,
+    competencia: b.querySelector('input.competencia').value,
+    tipo: b.querySelector('select.tipo').value,
+  }));
+
+  const bloco = el('div', {},
+    el('h3', {}, 'Ativos que o mandato cobre'),
+    ativos,
+    el('p', {}, el('button', { type: 'button', class: 'btn pequeno', onclick: () => linhaDeAtivo().focus() }, '+ Ativo')),
+    el('p', { class: 'nota' }, `Cada ativo nasce com ${MODELO.acervo.nome} (${MODELO.acervo.subpastas.length} compartimentos), ${MODELO.apolices.nome} vazia e ${MODELO.frentes}.`),
+    el('h3', {}, 'Frentes a abrir agora'),
+    frentes,
+    el('p', {}, el('button', { type: 'button', class: 'btn pequeno', onclick: blocoDeFrente }, '+ Frente')),
+    el('p', { class: 'nota' }, 'Pode deixar sem nenhuma: frente se abre quando o trabalho começa.'));
+  return { bloco, nomesDosAtivos, frentesInformadas };
+}
+
+function rodape(corpo, rotulo, aoPedir) {
+  return el('div', { class: 'rodape' },
+    el('button', { type: 'button', class: 'btn', onclick: fecharFolha }, 'Cancelar'),
+    el('button', { type: 'button', class: 'btn principal', onclick: aoPedir }, rotulo));
+}
+
+// ---------------------------------------------------------------------------
+// Nova originação
+// ---------------------------------------------------------------------------
+function abrirOriginar() {
+  const corpo = abrirFolha('Nova originação');
+  const nome = el('input', { type: 'text', autocomplete: 'off', placeholder: 'ex.: Campo Verde' });
+  const competencia = el('input', { type: 'text', autocomplete: 'off', value: ESTADO.competencia_hoje, maxlength: 7 });
+  const previa = el('div', { class: 'previa vazia' });
+  corpo.replaceChildren(
+    campo('Nome do prospecto', nome),
+    campo('Competência (AAAA-MM)', competencia,
+      'Quando a conversa começou, não hoje. Com a data no nome, a lista ordena por idade sozinha.'),
+    previa,
+    el('p', { class: 'nota' }, `Enquanto não houver mandato, é só a originação: ${MODELO.originacao.subpastas.length} subpastas, nem acervo, nem apólice, nem frente.`),
+    rodape(corpo, 'Ver o plano', () => pedirPlano(corpo, '/api/originar/plano', { nome: nome.value, competencia: competencia.value })),
+  );
+  previaDeGrafia(nome, competencia, previa, 'Vai se chamar  ');
+  nome.focus();
+}
+
+// ---------------------------------------------------------------------------
+// Encerrar e reabrir
+// ---------------------------------------------------------------------------
+function abrirEncerrar(o) {
+  const corpo = abrirFolha('Encerrar originação');
+  const motivo = el('input', { type: 'text', autocomplete: 'off', placeholder: 'ex.: ficou com a corretora atual' });
+  corpo.replaceChildren(
+    el('p', { class: 'mono' }, o.nome),
+    campo('Motivo (uma linha)', motivo,
+      'Sem motivo não encerro: é o que dá valor ao registro quando o nome voltar, dali a dois anos.'),
+    el('p', { class: 'nota' }, `A pasta vai para ${MODELO.encerradas}, com tudo dentro. Nada é apagado.`),
+    rodape(corpo, 'Ver o plano', () => pedirPlano(corpo, '/api/encerrar/plano', { nome: o.nome, motivo: motivo.value })),
+  );
+  motivo.focus();
+}
+
+function abrirReabrir(e) {
+  const corpo = abrirFolha('Reabrir originação');
+  corpo.replaceChildren(el('p', { class: 'discreto' }, 'Preparando…'));
+  pedirPlano(corpo, '/api/reabrir/plano', { nome: e.nome });
+}
+
+// ---------------------------------------------------------------------------
+// Promover — cliente, ativos e frentes
+// ---------------------------------------------------------------------------
+function abrirPromover(o) {
+  const corpo = abrirFolha('Promover: assinou o mandato');
+  const cliente = el('input', { type: 'text', autocomplete: 'off', value: o.titulo });
+  const previaCliente = el('div', { class: 'previa vazia' });
+  const secao = secaoDeAtivosEFrentes();
+  corpo.replaceChildren(
+    el('p', { class: 'mono' }, o.nome),
+    el('p', { class: 'nota' }, `A pasta da originação muda de lugar — sai do funil, entra no cliente e passa a se chamar ${MODELO.originacao.nome_no_cliente}. Move, não copia. Só então a árvore cresce ao redor dela.`),
+    campo('Nome do cliente (a pasta em CLIENTES)', cliente),
+    previaCliente,
+    secao.bloco,
+    rodape(corpo, 'Ver o plano', () => pedirPlano(corpo, '/api/promover/plano', {
+      nome: o.nome, cliente: cliente.value, ativos: secao.nomesDosAtivos(), frentes: secao.frentesInformadas(),
+    })),
+  );
+  previaDeGrafia(cliente, null, previaCliente, 'Pasta  ');
+  cliente.focus();
+  cliente.select();
+}
+
+// ---------------------------------------------------------------------------
+// Cliente novo, com mandato — quem já chega assinado e nunca passou pelo funil
+// ---------------------------------------------------------------------------
+function abrirCliente() {
+  const corpo = abrirFolha('Cliente novo, com mandato');
+  const nome = el('input', { type: 'text', autocomplete: 'off', placeholder: 'ex.: Grupo Mercúrio' });
+  const previa = el('div', { class: 'previa vazia' });
+  const mandato = el('input', { type: 'checkbox', id: 'mandato' });
+  const secao = secaoDeAtivosEFrentes();
+  corpo.replaceChildren(
+    campo('Nome do cliente (a pasta em CLIENTES)', nome),
+    previa,
+    el('div', { class: 'campo marcar' }, mandato, el('label', { for: 'mandato' }, 'O mandato está assinado.',
+      el('div', { class: 'dica' }, 'Sem mandato não é cliente: é originação, e o lugar é o funil. E se a originação passou pelo funil, não crie por aqui — use Promover, que leva a originação junto.'))),
+    secao.bloco,
+    rodape(corpo, 'Ver o plano', () => pedirPlano(corpo, '/api/cliente/plano', {
+      nome: nome.value, mandato: mandato.checked, ativos: secao.nomesDosAtivos(), frentes: secao.frentesInformadas(),
+    }, carregarClientes)),
+  );
+  previaDeGrafia(nome, null, previa, 'Pasta  ');
+  nome.focus();
+}
+
+// ---------------------------------------------------------------------------
+// Ativo novo em cliente que já existe — o mandato ganhou uma usina
+// ---------------------------------------------------------------------------
+function abrirAtivo(cliente) {
+  const corpo = abrirFolha('Ativo novo em ' + cliente.caminho);
+  const nome = el('input', { type: 'text', autocomplete: 'off', placeholder: 'ex.: Usina Norte' });
+  const previa = el('div', { class: 'previa vazia' });
+  const chips = el('div', { class: 'chips' },
+    ...MODELO.apolices.ramos_conhecidos.map(r => el('button', { type: 'button', class: 'chip', 'aria-pressed': 'false',
+      onclick: (e) => e.currentTarget.setAttribute('aria-pressed', e.currentTarget.getAttribute('aria-pressed') === 'true' ? 'false' : 'true') }, r)));
+  const escolhidos = () => [...chips.querySelectorAll('.chip[aria-pressed="true"]')].map(c => c.textContent);
+
+  // Frentes do ativo: o mesmo bloco das outras folhas, sem "onde mora" —
+  // aqui todas moram no ativo que está nascendo.
+  const frentes = el('div', {});
+  function blocoDeFrente() {
+    const titulo = el('input', { type: 'text', autocomplete: 'off', placeholder: 'ex.: Renovação RO', class: 'titulo' });
+    const competencia = el('input', { type: 'text', autocomplete: 'off', value: ESTADO.competencia_hoje, maxlength: 7, class: 'competencia' });
+    const tipo = el('select', { class: 'tipo' },
+      ...MODELO.tipos_frente.map(t => el('option', { value: t.codigo, title: t.quando },
+        `${t.codigo} — ${t.descricao} (${t.subpastas.length} subpastas)`)));
+    const previaFrente = el('div', { class: 'previa vazia' });
+    const bloco = el('div', { class: 'frente' },
+      el('div', { class: 'topo-frente' }, el('span', {}, 'Frente'),
+        el('button', { type: 'button', class: 'btn mini', title: 'Tirar', onclick: () => bloco.remove() }, '×')),
+      el('div', { class: 'campos' },
+        el('div', { class: 'campo largo' }, el('label', {}, 'Título'), titulo),
+        el('div', { class: 'campo' }, el('label', {}, 'Competência (AAAA-MM)'), competencia),
+        el('div', { class: 'campo' }, el('label', {}, 'Tipo'), tipo)),
+      previaFrente);
+    previaDeGrafia(titulo, competencia, previaFrente, 'Pasta  ');
+    frentes.append(bloco);
+    titulo.focus();
+  }
+  const frentesInformadas = () => [...frentes.querySelectorAll('.frente')].map(b => ({
+    titulo: b.querySelector('input.titulo').value,
+    competencia: b.querySelector('input.competencia').value,
+    tipo: b.querySelector('select.tipo').value,
+  }));
+
+  corpo.replaceChildren(
+    campo('Nome do ativo', nome),
+    previa,
+    el('p', { class: 'nota' }, `Nasce com ${MODELO.acervo.nome} (${MODELO.acervo.subpastas.length} compartimentos), ${MODELO.apolices.nome} e ${MODELO.frentes}. Nada do que já existe no cliente é tocado.`),
+    el('h3', {}, 'Ramos de apólice, se já houver apólice'),
+    chips,
+    el('p', { class: 'nota' }, 'Pode deixar sem nenhum: ramo se abre quando há apólice, não por precaução.'),
+    el('h3', {}, 'Frentes a abrir agora'),
+    frentes,
+    el('p', {}, el('button', { type: 'button', class: 'btn pequeno', onclick: blocoDeFrente }, '+ Frente')),
+    el('p', { class: 'nota' }, 'Pode deixar sem nenhuma: frente se abre quando o trabalho começa.'),
+    rodape(corpo, 'Ver o plano', () => pedirPlano(corpo, '/api/ativo/plano', {
+      cliente: cliente.caminho, nome: nome.value, ramos: escolhidos(), frentes: frentesInformadas(),
+    }, carregarClientes)),
+  );
+  previaDeGrafia(nome, null, previa, 'Pasta  ');
+  nome.focus();
+}
+
+// ---------------------------------------------------------------------------
+// Frente — destino escolhido numa lista, tipo escolhido num cartão
+// ---------------------------------------------------------------------------
+function abrirFrente(destino) {
+  const corpo = abrirFolha('Nova frente');
+  const onde = seletorDeDestino(destino && destino.caminho);
+  const titulo = el('input', { type: 'text', autocomplete: 'off', placeholder: 'ex.: Renovação RO' });
+  const competencia = el('input', { type: 'text', autocomplete: 'off', value: ESTADO.competencia_hoje, maxlength: 7 });
+  const previa = el('div', { class: 'previa vazia' });
+  const cartoes = cartoesDeTipo('tipo-frente');
+  corpo.replaceChildren(
+    campo('Onde mora', onde, 'Frente de um ativo fica sob o ativo; a que atravessa ativos fica no cliente.'),
+    campo('Título', titulo),
+    campo('Competência (AAAA-MM)', competencia, 'Quando a frente começou, não quando a pasta é criada.'),
+    previa,
+    el('h3', {}, 'Tipo'),
+    cartoes,
+    rodape(corpo, 'Ver o plano', () => pedirPlano(corpo, '/api/frente/plano', {
+      caminho: onde.value, titulo: titulo.value, competencia: competencia.value, tipo: cartoes.escolhido(),
+    }, carregarClientes)),
+  );
+  previaDeGrafia(titulo, competencia, previa, 'Pasta  ');
+  titulo.focus();
+}
+
+// ---------------------------------------------------------------------------
+// Ramo de apólice — os ramos da casa em botões, e espaço para um fora da lista
+// ---------------------------------------------------------------------------
+function abrirRamo(destino) {
+  const corpo = abrirFolha('Novo ramo de apólice');
+  const onde = seletorDeDestino(destino && destino.caminho);
+  const chips = el('div', { class: 'chips' },
+    ...MODELO.apolices.ramos_conhecidos.map(r => el('button', { type: 'button', class: 'chip', 'aria-pressed': 'false',
+      onclick: (e) => e.currentTarget.setAttribute('aria-pressed', e.currentTarget.getAttribute('aria-pressed') === 'true' ? 'false' : 'true') }, r)));
+  const outro = el('input', { type: 'text', autocomplete: 'off', placeholder: 'ex.: Equipamentos' });
+  const previa = el('div', { class: 'previa vazia' });
+  const escolhidos = () => [...chips.querySelectorAll('.chip[aria-pressed="true"]')].map(c => c.textContent);
+  corpo.replaceChildren(
+    campo('Onde mora', onde, 'No ativo, salvo se a apólice cobrir o grupo inteiro.'),
+    el('h3', {}, 'Ramos da casa'),
+    chips,
+    campo('Outro ramo, fora da lista', outro, 'Só se for ramo novo mesmo. A auditoria vai apontar como nota, para conferência.'),
+    previa,
+    el('p', { class: 'nota' }, `Cada ramo nasce com ${MODELO.apolices.ramo_subpastas.join(', ')}. Sinistro não é ramo: é a subpasta do ramo que sofreu o sinistro.`),
+    rodape(corpo, 'Ver o plano', () => pedirPlano(corpo, '/api/ramo/plano', {
+      caminho: onde.value, ramos: [...escolhidos(), outro.value],
+    }, carregarClientes)),
+  );
+  previaDeGrafia(outro, null, previa, 'Pasta  ');
+}
+
+// ---------------------------------------------------------------------------
+// Alinhar — uma frente atrás do modelo ganha a forma certa: renomeia o que
+// tem par pelo número, cria o que falta. Nunca apaga nem move.
+// ---------------------------------------------------------------------------
+function abrirAlinhar(info, aoTerminar) {
+  const corpo = abrirFolha('Alinhar a frente');
+  const cartoes = cartoesDeTipo('tipo-alinhar');
+  corpo.replaceChildren(
+    el('p', { class: 'mono' }, info.caminho),
+    el('p', { class: 'nota' }, 'Hoje tem: ' + info.presentes.join(' · ')),
+    el('p', { class: 'nota' }, `A forma mais parecida é ${info.tipo_proximo}, e já vem escolhida. Só troque se a frente for de outro tipo. O plano renomeia o que tem par pelo número e cria o que falta; nada é apagado nem movido.`),
+    el('h3', {}, 'Forma'),
+    cartoes,
+    rodape(corpo, 'Ver o plano', () => pedirPlano(corpo, '/api/alinhar/plano', {
+      caminho: info.caminho, tipo: cartoes.escolhido(),
+    }, aoTerminar)),
+  );
+  const radio = cartoes.querySelector(`input[value="${info.tipo_proximo}"]`);
+  if (radio) { radio.checked = true; radio.dispatchEvent(new Event('change')); }
+}
+
+// ---------------------------------------------------------------------------
+// Início
+// ---------------------------------------------------------------------------
+async function iniciar() {
+  try {
+    [ESTADO, MODELO] = await Promise.all([api('/api/estado'), api('/api/modelo')]);
+  } catch (e) {
+    $('#vista').replaceChildren(el('div', { class: 'caixa-erro' }, e.message));
+    return;
+  }
+  const modo = $('#modo');
+  if (ESTADO.modo === 'falso') {
+    document.title = 'VBR Pastas — demonstração';
+    modo.replaceChildren('Drive de demonstração');
+    const faixa = $('#faixa');
+    faixa.className = 'faixa';
+    faixa.textContent = 'Drive de demonstração: nada aqui é de verdade. As pastas existem só na memória deste programa e somem quando ele fecha.';
+    faixa.hidden = false;
+  } else {
+    modo.replaceChildren('Drive da VB Risk · ', el('span', { class: 'mono' }, ESTADO.raiz));
+  }
+  if (ESTADO.atalho_executavel === false) {
+    const faixa = $('#faixa');
+    faixa.className = 'faixa';
+    faixa.textContent = 'O atalho "VBR Pastas.command" ainda não está marcado como executável; o duplo clique não vai funcionar até rodar uma vez, no Terminal: chmod +x "VBR Pastas.command"';
+    faixa.hidden = false;
+  }
+  mostrarVista('funil');
+}
+
+iniciar();
+</script>
+</body>
+</html>
